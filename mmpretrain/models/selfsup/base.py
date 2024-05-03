@@ -126,7 +126,7 @@ class BaseSelfSupervisor(BaseModel, metaclass=ABCMeta):
         elif mode == 'loss':
             return self.loss(inputs, data_samples)
         else:
-            raise RuntimeError(f'Invalid mode "{mode}".')
+            return self.predict(inputs, data_samples)
 
     def extract_feat(self, inputs: torch.Tensor):
         """Extract features from the input tensor with shape (N, C, ...).
@@ -142,6 +142,22 @@ class BaseSelfSupervisor(BaseModel, metaclass=ABCMeta):
         """
         x = self.backbone(inputs)
         return x
+
+    @abstractmethod
+    def predict(self, inputs: torch.Tensor,
+             data_samples: List[DataSample]) -> dict:
+        """Extract features from the input tensor with shape (N, C, ...).
+
+        The default behavior is extracting features from backbone.
+
+        Args:
+            inputs (Tensor): A batch of inputs. The shape of it should be
+                ``(num_samples, num_channels, *img_shape)``.
+
+        Returns:
+            tuple | Tensor: The output feature tensor(s).
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def loss(self, inputs: torch.Tensor,

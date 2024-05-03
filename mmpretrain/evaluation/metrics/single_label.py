@@ -275,6 +275,28 @@ class Accuracy(BaseMetric):
                     results[-1].append(acc)
             return results
 
+@METRICS.register_module()
+class do_nothing(BaseMetric):
+    default_prefix: Optional[str] = 'none'
+
+    def __init__(self,
+                 collect_device: str = 'cpu',
+                 prefix: Optional[str] = None) -> None:
+        super().__init__(collect_device=collect_device, prefix=prefix)
+
+
+    def process(self, data_batch, data_samples: Sequence[dict]):
+        pass
+
+    def compute_metrics(self, results: List):
+        return 1
+
+    @staticmethod
+    def calculate(
+        pred: Union[torch.Tensor, np.ndarray, Sequence],
+        target: Union[torch.Tensor, np.ndarray, Sequence],
+    ) -> Union[torch.Tensor, List[List[torch.Tensor]]]:
+            return 1
 
 @METRICS.register_module()
 class SingleLabelMetric(BaseMetric):

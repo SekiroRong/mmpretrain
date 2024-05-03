@@ -1,6 +1,9 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+import os
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 from mmengine.model.weight_init import trunc_normal_
@@ -192,3 +195,46 @@ class SimMIM(BaseSelfSupervisor):
         losses = dict(loss=loss)
 
         return losses
+
+    def predict(self, inputs: torch.Tensor, data_samples: List[DataSample],
+             **kwargs) -> Dict[str, torch.Tensor]:
+        """The forward function in training.
+
+        Args:
+            inputs (List[torch.Tensor]): The input images.
+            data_samples (List[DataSample]): All elements required
+                during the forward function.
+
+        Returns:
+            Dict[str, torch.Tensor]: A dictionary of loss components.
+        """
+        mask = torch.stack([data_sample.mask for data_sample in data_samples])
+
+        img_latent = self.backbone(inputs, mask)
+        img_rec = self.neck(img_latent[0])
+        datasample = {}
+        datasample['recon_img'] = img_rec
+        save_dir = r'C:\D\Programs\SteetFighterRL\pythonProject1\tmp'
+        for idx, img in enumerate(img_rec):
+            path = data_samples[idx].img_path
+            _input = cv2.imread(path)
+            # print(_input.shape)
+            m = mask[idx].cpu().unsqueeze(-1).repeat(1, 1, 3).numpy()
+            # print(m)
+            m = m.astype(np.uint8)
+            m = cv2.resize(m, (192, 192), cv2.INTER_NEAREST)
+            _input = _input * (1 - m)
+            # cv2.imwrite(os.path.join(save_dir, str(idx) + '_mask.jpg'), m)
+            img = img.cpu().permute(1, 2, 0).numpy()
+            mean = [123.675, 116.28, 103.53],
+            std = [58.395, 57.12, 57.375],
+            denorm_img = img * std + mean
+            denorm_img = denorm_img.astype(np.uint8)
+            denorm_img = cv2.cvtColor(denorm_img, cv2.COLOR_BGR2RGB)
+            denorm_img = denorm_img * m
+            # print(denorm_img)
+            cv2.imwrite(os.path.join(save_dir, str(idx)+'.jpg'), denorm_img+_input+(1 - m)*[50, 0, 0])
+            m *=255
+            m = m.astype(np.uint8)
+            cv2.imwrite(os.path.join(save_dir, str(idx) + '_mask.jpg'), m)
+        return datasample
